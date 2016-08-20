@@ -1,0 +1,25 @@
+{
+  "name": "tinysim",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "pixi.js": "^4.0.0-rc3",
+    "victor": "^1.1.0"
+  },
+  "devDependencies": {
+    "browserify": "^13.1.0",
+    "browserify-versionify": "^1.0.6",
+    "gulp": "^3.9.1",
+    "gulp-if-else": "^1.0.3",
+    "gulp-sourcemaps": "^1.6.0",
+    "gulp-util": "^3.0.7",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-source-stream": "^1.1.0"
+  }
+}
