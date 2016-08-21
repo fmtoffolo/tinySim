@@ -133,8 +133,11 @@ var animal = {
     findFood: function() {
         this.destination = new Victor(200, 500);
         if (this.location.clone().subtract(this.destination).magnitude() <= 40) {
-            console.log('found food');
-            this.setState(this.goHome);
+          if (Math.random() > 0.5) {
+              this.setState(this.drinkWater);
+          } else {
+              this.setState(this.goHome);
+          }
         }
         this.applyBehaviors();
     },
@@ -156,8 +159,11 @@ var animal = {
     drinkWater: function() {
         this.destination = new Victor(1000, 100);
         if (this.location.clone().subtract(this.destination).magnitude() <= 40) {
-            console.log('got water');
-            this.setState(this.findFood);
+          if (Math.random() > 0.5) {
+              this.setState(this.findFood);
+          } else {
+              this.setState(this.goHome);
+          }
         }
         this.applyBehaviors();
     }
