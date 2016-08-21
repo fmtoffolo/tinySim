@@ -28,8 +28,8 @@ function setMagnitude(vector, scalar) {
 var animal = {
     init: function() {
         this.location = new Victor(Math.random() * 800, 100);
-        this.maxForce =0.05;
-        this.maxSpeed = 3;
+        this.maxForce = 0.1;
+        this.maxSpeed = 2;
         this.id = Math.random();
         this.velocity = new Victor(0, 0);
         this.acceleration = new Victor(0, 0);
@@ -39,6 +39,10 @@ var animal = {
         this.sprite.anchor.x = 0.5;
         this.sprite.anchor.y = 0.5;
         this.sprite.scale = new PIXI.Point(0.2, 0.2);
+        this.setState(this.findFood);
+    },
+    setUniverse: function(universe) {
+        this.animals = universe;
     },
     updatePosition: function() {
         this.velocity.add(this.acceleration);
@@ -50,8 +54,8 @@ var animal = {
     applyForce: function(force) {
         this.acceleration.add(force);
     },
-    seek: function(x, y) {
-        var desired = new Victor(x, y);
+    seek: function() {
+        var desired = this.destination.clone();
         var minBrakeDistance = 70;
         desired = desired.subtract(this.location);
 
@@ -70,11 +74,12 @@ var animal = {
         steer = limit(desired, this.maxForce);
         return steer;
     },
-    avoid: function(animals) {
+    avoid: function() {
+        var animals = this.animals;
         var _this = this;
         var avoid = new Victor();
         var count = 0;
-        var minSeparation = 40;
+        var minSeparation = 20;
         animals.forEach(function(animal) {
 
             var separation = _this.location.clone();
@@ -100,19 +105,61 @@ var animal = {
         return avoid;
 
     },
-    applyBehaviors: function(x,y,animals) {
-        var avoid = this.avoid(animals).multiplyScalar(1.5);
-        var seek = this.seek(x,y).multiplyScalar(0.5);
+    applyBehaviors: function() {
+        //we apply diff weights to these forces
+        var avoid = this.avoid(this.animals).multiplyScalar(1.6);
+        var seek = this.seek().multiplyScalar(0.25);
 
+        //we apply these forces
         this.applyForce(avoid);
         this.applyForce(seek);
 
+        //we update the position based on the new velocity
         this.updatePosition();
     },
     updateDisplay: function() {
         this.sprite.position.x = this.location.x;
         this.sprite.position.y = this.location.y;
         this.sprite.rotation = this.velocity.angle() + (Math.PI / 2);
+    },
+    setState: function(state) {
+        this.activeState = state;
+    },
+    update: function() {
+        if (this.activeState) {
+            this.activeState();
+        }
+    },
+    findFood: function() {
+        this.destination = new Victor(200, 500);
+        if (this.location.clone().subtract(this.destination).magnitude() <= 40) {
+            console.log('found food');
+            this.setState(this.goHome);
+        }
+        this.applyBehaviors();
+    },
+    eatFood: function () {
+
+    },
+    goHome: function() {
+        this.destination = new Victor(100, 100);
+        if (this.location.clone().subtract(this.destination).magnitude() <= 40) {
+            console.log('got home');
+            if (Math.random() > 0.5) {
+                this.setState(this.findFood);
+            } else {
+                this.setState(this.drinkWater);
+            }
+        }
+        this.applyBehaviors();
+    },
+    drinkWater: function() {
+        this.destination = new Victor(1000, 100);
+        if (this.location.clone().subtract(this.destination).magnitude() <= 40) {
+            console.log('got water');
+            this.setState(this.findFood);
+        }
+        this.applyBehaviors();
     }
 }
 
