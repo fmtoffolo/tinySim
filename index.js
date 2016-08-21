@@ -3,7 +3,6 @@ var Animal = require('./animal.js');
 
 
 
-
 function createDeers(amount) {
     var animals = [];
     for (var i = 0; i < amount; i++) {
@@ -15,7 +14,7 @@ function createDeers(amount) {
     return animals;
 }
 
-var animals = createDeers(10);
+var animals = createDeers(20);
 
 var renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, {
     backgroundColor: 0xDFD4C9
@@ -65,8 +64,6 @@ stage.addChild(water);
 
 animals.forEach(function(animal) {
     stage.addChild(animal.sprite);
-
-    console.log(animal);
 });
 
 
@@ -77,10 +74,6 @@ var mouse = {
 }
 animate();
 
-window.addEventListener('mousedown', function(event) {
-    mouse.x = event.offsetX;
-    mouse.y = event.offsetY;
-})
 
 var frames = 0;
 
