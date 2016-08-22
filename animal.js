@@ -43,6 +43,33 @@ var animal = {
         this.sprite.scale = new PIXI.Point(0.2, 0.2);
         this.stack = [];
         this.pushState(this.findFood);
+        //life stats
+        this.hp = 100;
+        this.maxHp = 100;
+        this.stamina = 30;
+        this.maxStamina = 30;
+    },
+    gainStamina: function(amount) {
+        if (this.stamina + amount > this.maxStamina) {
+            this.stamina = this.maxStamina;
+        } else {
+            this.stamina += amount;
+        }
+    },
+    loseStamina: function(amount) {
+        if (this.stamina - amount < 0) {
+            this.stamina = 0;
+        } else {
+            this.stamina -= amount;
+        }
+    },
+    calculateHp: function() {
+        if (this.stamina === 0) {
+            this.hp -= 0.1;
+        }
+        if (this.hp < 0) {
+            this.hp = 0;
+        }
     },
     setUniverse: function(universe) {
         this.animals = universe;
@@ -58,8 +85,12 @@ var animal = {
         this.acceleration.add(force);
     },
     seek: function() {
+
+
         var desired = this.destination.clone();
-        var minBrakeDistance = 70;
+        // var minBrakeDistance = 70;
+        //it has to start braking at the distance needed if he was going max speed
+        var minBrakeDistance = this.maxSpeed / this.maxForce;
         desired = desired.subtract(this.location);
 
         var distance = desired.magnitude();
@@ -75,18 +106,20 @@ var animal = {
 
         desired.subtract(this.velocity);
         steer = limit(desired, this.maxForce);
+
         return steer;
     },
     avoid: function() {
+
         var animals = this.animals;
         var _this = this;
         var avoid = new Victor();
         var count = 0;
-        var minSeparation = 15;
+        var minSeparation = 25;
         animals.forEach(function(animal) {
 
-            var separation = _this.location.clone();
-            separation = separation.subtract(animal.location);
+            var separation = _this.location.clone().add(_this.velocity);
+            separation = separation.subtract(animal.location.clone().add(animal.velocity));
             var d = separation.magnitude();
 
             if (d < minSeparation && d > 0) {
@@ -109,29 +142,32 @@ var animal = {
 
     },
     evade: function() {
-        if (!this.danger) {
-          return new Victor(0,0);
-        }
-        var danger = this.danger;
 
-        danger = danger.normalize().multiplyScalar(10);
+        var danger = this.danger.clone();
+
+        danger = danger.normalize().multiplyScalar(this.maxSpeed * 5 * this.stamina / this.maxStamina);
         danger.subtract(this.velocity);
+        danger = limit(danger, this.maxForce) //steer
+        var avoid = this.avoid(this.animals).multiplyScalar(1.5); //we try to avoid other animals
+        danger.multiplyScalar(5);
+        //we apply both forces
+        this.applyForce(avoid);
+        this.applyForce(danger);
 
-        return limit(danger, this.maxForce * 5 ); //limit steer with force
+        //update stamina
+        this.loseStamina(0.1);
     },
-    applyBehaviors: function() {
-        //we apply diff weights to these forces
-        var avoid = this.avoid(this.animals).multiplyScalar(1.25);
-        var seek = this.seek().multiplyScalar(0.2);
-        var evade = this.evade().multiplyScalar(4);
+    move: function() {
 
+        //we apply diff weights to these forces
+        var avoid = this.avoid(this.animals).multiplyScalar(1.5);
+        var seek = this.seek().multiplyScalar(0.5);
         //we apply these forces
         this.applyForce(avoid);
         this.applyForce(seek);
-        this.applyForce(evade);
 
-        //we update the position based on the new velocity
-        this.updatePosition();
+        //update stamina
+        this.gainStamina(0.05);
     },
     updateDisplay: function() {
         this.sprite.position.x = this.location.x;
@@ -147,14 +183,18 @@ var animal = {
     update: function() {
         var _this = this;
         this.currentState = this.stack[this.stack.length - 1];
+        this.checkDanger();
         if (this.currentState) {
             this.currentState();
         }
-        this.checkDanger();
+        this.updatePosition();
+        this.calculateHp();
+
     },
     findFood: function() {
         this.destination = new Victor(200, 500);
-        if (this.location.clone().subtract(this.destination).magnitude() <= 40) {
+        this.move();
+        if (this.location.clone().subtract(this.destination).magnitude() <= 50) {
             this.popState();
             if (Math.random() > 0.5) {
                 this.pushState(this.drinkWater);
@@ -162,11 +202,10 @@ var animal = {
                 this.pushState(this.goHome);
             }
         }
-
-        this.applyBehaviors();
     },
     goHome: function() {
         this.destination = new Victor(100, 100);
+        this.move();
         if (this.location.clone().subtract(this.destination).magnitude() <= 40) {
             this.maxSpeed = 2;
             this.maxForce = 0.1;
@@ -177,10 +216,11 @@ var animal = {
                 this.pushState(this.drinkWater);
             }
         }
-        this.applyBehaviors();
+
     },
     drinkWater: function() {
         this.destination = new Victor(1000, 100);
+        this.move();
         if (this.location.clone().subtract(this.destination).magnitude() <= 40) {
             this.popState();
             if (Math.random() > 0.5) {
@@ -189,34 +229,54 @@ var animal = {
                 this.pushState(this.goHome);
             }
         }
-        this.applyBehaviors();
+
+    },
+    stop: function() {
+        if (parseInt(this.velocity.magnitude().toFixed(1)) === 0) {
+            this.stack.pop();
+            return;
+        }
+        var brake = this.velocity.clone().multiplyScalar(-this.maxForce);
+        this.applyForce(brake);
+    },
+    rest: function() {
+        if (this.stamina > 0) {
+            this.stack.pop();
+        }
     },
     checkDanger: function() {
 
         var danger = this.location.clone().subtract(new Victor(mousePosition.getX(), mousePosition.getY()))
         dangerDist = danger.magnitude();
 
+        if (this.stack[this.stack.length - 1].name === 'runAway') {
+            return;
+        }
+
         if (dangerDist < 50) {
-            this.danger = danger;
+
             this.pushState(this.runAway);
         }
     },
     runAway: function() {
-        if (!this.danger) {
-            // this.stack.pop();
-        }
-
 
         var danger = this.location.clone().subtract(new Victor(mousePosition.getX(), mousePosition.getY()))
         dangerDist = danger.magnitude();
+        this.danger = danger;
 
         if (dangerDist > 150) {
             this.stack.pop();
+            if (!this.stack.length) {
+                this.stack.push(this.stop);
+            }
             this.danger = null;
+        } else if (this.stamina === 0) {
+            this.stack.pop();
+            this.stack.push(this.stop);
         } else {
             this.evade();
         }
-        this.applyBehaviors();
+
     }
 }
 

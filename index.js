@@ -14,7 +14,7 @@ function createDeers(amount) {
     return animals;
 }
 
-var animals = createDeers(20);
+var animals = createDeers(1);
 
 var renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, {
     backgroundColor: 0xDFD4C9
@@ -80,10 +80,15 @@ var frames = 0;
 function animate() {
     requestAnimationFrame(animate);
 
-
     animals.forEach(function(animal) {
         animal.update()
+
     });
+    if (animals[0].stack.length) {
+
+      fps.innerHTML = animals[0].stack[animals[0].stack.length -1].name;
+
+    }
 
     frames++;
     renderer.render(stage);
